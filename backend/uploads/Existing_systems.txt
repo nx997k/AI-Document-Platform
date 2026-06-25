@@ -1,0 +1,98 @@
+You're not trying to build a full competitor to those products.
+
+Your project is:
+
+AI Powered Document Generation Platform
+            +
+Retrieval Augmented Generation (RAG)
+
+Workflow:
+
+User Uploads PDF/DOCX
+          ↓
+Text Extraction
+          ↓
+Chunking
+          ↓
+Embeddings
+          ↓
+FAISS Vector DB
+          ↓
+User Query
+          ↓
+LLM Gemini
+          ↓
+Generated Document
+Good Viva Answer
+
+If faculty asks:
+
+"Are there existing systems like this?"
+
+You can say:
+
+"Yes sir/madam. Applications such as ChatGPT Enterprise, Google NotebookLM, Microsoft Copilot and Glean use similar Retrieval-Augmented Generation concepts. Our project implements a simplified academic version where users upload documents, the system creates embeddings, stores them in a FAISS vector database, retrieves relevant information, and uses a Large Language Model to generate context-aware documents."
+
+What Makes Your Project Strong
+
+Many student projects stop at:
+
+Upload PDF
+↓
+Generate Summary
+
+Your planned architecture includes:
+
+Authentication
+↓
+Document Upload
+↓
+Text Extraction
+↓
+Embeddings
+↓
+FAISS
+↓
+RAG Retrieval
+↓
+LLM Generation
+
+"This project implements a real Retrieval-Augmented Generation architecture. Due to project scope, it is a standalone implementation rather than a large-scale enterprise platform, but it uses the same core concepts: document ingestion, embedding generation, vector search, retrieval, and LLM-based generation."
+
+
+
+We're building a real RAG system, but at a scale suitable for a student major project rather than an enterprise product. The underlying AI workflow is the same. 🚀
+
+If asked:
+
+Why do we need embeddings?
+
+Answer:
+
+"Embeddings convert text into numerical vectors that capture semantic meaning. Similar texts have similar vectors. These vectors are stored in FAISS, which performs similarity search to retrieve relevant document chunks for the RAG system."
+
+FAISS (Facebook AI Similarity Search) is a vector database library developed by Meta. It stores document embeddings and performs similarity search to retrieve the most relevant document chunks for a user's query. In our RAG system, FAISS helps find relevant information from uploaded documents before sending it to the AI model."
+
+If faculty asks:
+
+How do you know retrieval is working?
+
+You can say:
+
+"When the user asks a question, we convert the question into an embedding using Sentence Transformers. FAISS compares it against document chunk embeddings and returns the most semantically relevant chunks. The retrieved chunks match the meaning of the user's question, proving semantic retrieval is working."
+
+If asked:
+
+What AI technologies are used?
+
+You can answer:
+
+"The system uses Sentence Transformers for embedding generation, FAISS for vector similarity search, Retrieval-Augmented Generation (RAG) for contextual retrieval, and Google's Gemini API for natural language answer generation from uploaded documents."
+
+If they ask:
+
+"Did you optimize the system?"
+
+You can answer:
+
+"Initially the embedding model was loaded for every request, causing high latency. We optimized the architecture by loading the SentenceTransformer model once at application startup and reusing it for all queries, significantly reducing response time."

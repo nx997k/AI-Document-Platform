@@ -1,0 +1,85 @@
+┌───────────────────────────┐
+│          USER             │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│   React Frontend (UI)     │
+│ Login / Register          │
+│ Dashboard                 │
+│ Upload Document           │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│      Flask Backend        │
+│ Authentication APIs       │
+│ Upload APIs               │
+│ RAG APIs                  │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│      SQLite Database      │
+│ Users                     │
+│ Documents Metadata        │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Document Upload           │
+│ PDF / DOCX                │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Text Extraction           │
+│ pdfplumber                │
+│ python-docx              │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Text Chunking             │
+│ Split into paragraphs     │
+│ and smaller chunks        │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Embedding Generation      │
+│ sentence-transformers     │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ FAISS Vector Database     │
+│ Store Embeddings          │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ User Query                │
+│ "Generate leave letter"   │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Retrieve Relevant Chunks  │
+│ from FAISS                │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ Gemini / OpenAI           │
+│ Context + Query           │
+└─────────────┬─────────────┘
+              │
+              ▼
+┌───────────────────────────┐
+│ AI Generated Document     │
+│ Resume                    │
+│ Report                    │
+│ Letter                    │
+│ Summary                   │
+└───────────────────────────┘
