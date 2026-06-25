@@ -187,15 +187,23 @@ Exports generated content to:
 
 # 📸 Screenshots
 
-Add screenshots for:
+### 🔐 Login Page
+![Login](screenshots/login.png)
 
-* Login Page
-* Dashboard
-* Upload Document
-* AI Chat
-* AI Document Generator
-* Generated Document
-* Export Feature
+### 📊 Dashboard
+![Dashboard](screenshots/Dashboard.png)
+
+### 📤 Upload Documents
+![Upload](screenshots/uploads.png)
+
+### 📁 My Documents
+![Documents](screenshots/documents.png)
+
+### 💬 AI Chat
+![AI Chat](screenshots/AI-chat.png)
+
+### 🤖 AI Document Generator
+![Generator](screenshots/generator.png)
 
 ---
 
