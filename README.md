@@ -6,11 +6,15 @@
 
 <!-- ========================================================= -->
 
+<h1 align="center">
+🤖 AI Document Generation Platform
+</h1>
+
 <p align="center">
+AI-powered Full-Stack Document Intelligence Platform using React, Flask, Google Gemini & Retrieval-Augmented Generation (RAG)
+</p>
 
-# 🤖 AI Document Generation Platform
-
-### AI-powered Full-Stack Document Intelligence Platform using React, Flask, Google Gemini & Retrieval-Augmented Generation (RAG)
+<p align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
 ![Flask](https://img.shields.io/badge/Flask-Backend-black?logo=flask)
