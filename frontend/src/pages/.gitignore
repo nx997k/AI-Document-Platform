@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.db
+*.sqlite3
+instance/
+
+# Environment variables
+.env
+.venv/
+venv/
+
+# Uploads
+backend/uploads/
+
+# Node
+node_modules/
+dist/
+
+# VS Code / Cursor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
