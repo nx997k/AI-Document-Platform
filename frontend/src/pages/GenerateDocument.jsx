@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
 
-const API = "http://127.0.0.1:5000";
+const API =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
 
 const PROMPT_SUGGESTIONS = [
   "Create a project report based on the uploaded document.",
@@ -36,12 +37,25 @@ function GenerateDocument() {
   }, []);
 
   const fetchDocuments = async () => {
-    const response = await fetch(`${API}/documents`);
+   try {
+     const response = await fetch(`${API}/documents`);
+
+     if (!response.ok) {
+      throw new Error("Unable to load documents.");
+    }
+
     const data = await response.json();
+
     setDocuments(data);
+
     if (data.length > 0) {
       setSourceDocument(data[0]);
     }
+
+  }catch (error) {
+    console.error(error);
+    alert(error.message);
+   }
   };
 
   const handleGenerate = async (e) => {
@@ -64,9 +78,7 @@ function GenerateDocument() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Generation failed");
-        setActiveStep(1);
-        return;
+        throw new Error(data.message || "Generation failed");
       }
 
       setRetrievedChunks(data.retrieved_chunks || []);
@@ -76,9 +88,11 @@ function GenerateDocument() {
         setContent(data.content || "");
         setActiveStep(4);
       }, 400);
-    } catch {
-      alert("Failed to connect to the server");
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Failed to connect to the server");
       setActiveStep(1);
+
     } finally {
       setGenerating(false);
     }

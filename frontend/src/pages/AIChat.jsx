@@ -19,34 +19,72 @@ function AIChat() {
   }, [messages, loading]);
 
   const fetchDocuments = async () => {
-    const response = await fetch("http://127.0.0.1:5000/documents");
-    const data = await response.json();
-    setDocuments(data);
-    if (data.length > 0) {
-      setSelectedDocument(data[0]);
+    try {
+      const response = await fetch("http://127.0.0.1:5000/documents");
+
+      if (!response.ok) {
+        throw new Error("Unable to load documents.");
+      }
+
+      const data = await response.json();
+
+      setDocuments(data);
+
+      if (data.length > 0) {
+        setSelectedDocument(data[0]);
+      }
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const askQuestion = async (e) => {
-    e?.preventDefault();
+    e.preventDefault();
+
     if (!question.trim() || !selectedDocument) return;
 
     setLoading(true);
+
     const currentQuestion = question;
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:5000/ask/${selectedDocument}?question=${encodeURIComponent(currentQuestion)}`
+        `http://127.0.0.1:5000/ask/${selectedDocument}?question=${encodeURIComponent(
+          currentQuestion
+        )}`
       );
+
+      if (!response.ok) {
+        throw new Error("Unable to get AI response.");
+      }
 
       const data = await response.json();
 
       setMessages((prev) => [
         ...prev,
-        { sender: "user", text: currentQuestion },
-        { sender: "ai", text: data.answer },
+        {
+          sender: "user",
+          text: currentQuestion,
+        },
+        {
+          sender: "ai",
+          text: data.answer,
+        },
       ]);
+
       setQuestion("");
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "user",
+          text: currentQuestion,
+        },
+        {
+          sender: "ai",
+          text: "⚠️ " + error.message,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -63,6 +101,7 @@ function AIChat() {
             <label className="form-label" htmlFor="document-select">
               Source Document
             </label>
+
             <select
               id="document-select"
               className="form-select"
@@ -85,12 +124,13 @@ function AIChat() {
         <form className="chat-input-row" onSubmit={askQuestion}>
           <input
             type="text"
+            className="form-input"
+            placeholder="Ask anything about your document..."
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask anything about your document..."
-            className="form-input"
             disabled={!selectedDocument}
           />
+
           <Button
             type="submit"
             variant="primary"
@@ -110,18 +150,23 @@ function AIChat() {
             {messages.length === 0 && !loading && (
               <div className="chat-empty">
                 <div className="chat-empty-icon">💬</div>
-                <p>Start a conversation by asking a question about your document.</p>
+                <p>
+                  Start a conversation by asking a question about your
+                  document.
+                </p>
               </div>
             )}
 
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`chat-bubble chat-bubble--${msg.sender === "user" ? "user" : "ai"}`}
+                className={`chat-bubble chat-bubble--${msg.sender === "user" ? "user" : "ai"
+                  }`}
               >
                 <span className="chat-bubble-label">
                   {msg.sender === "user" ? "You" : "AI Assistant"}
                 </span>
+
                 {msg.text}
               </div>
             ))}
@@ -129,18 +174,22 @@ function AIChat() {
             {loading && (
               <div className="chat-bubble chat-bubble--ai">
                 <div className="chat-typing">
-                  <span className="chat-bubble-label">AI Assistant</span>
+                  <span className="chat-bubble-label">
+                    AI Assistant
+                  </span>
+
                   <div className="typing-dots">
                     <span />
                     <span />
                     <span />
                   </div>
+
                   Thinking...
                 </div>
               </div>
             )}
 
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef}></div>
           </div>
         </div>
       </div>
