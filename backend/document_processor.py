@@ -1,3 +1,5 @@
+import pickle
+import os
 import pdfplumber
 from docx import Document
 from sentence_transformers import SentenceTransformer
@@ -116,3 +118,56 @@ def retrieve_context(file_path, query, k=5):
     context = "\n\n".join(results)
 
     return context, results
+
+def save_faiss_index(index, filename):
+    """
+    Save FAISS index to backend/indexes
+    """
+    os.makedirs("indexes", exist_ok=True)
+
+    index_path = os.path.join(
+        "indexes",
+        f"{filename}.index"
+    )
+
+    faiss.write_index(index, index_path)
+
+
+def load_faiss_index(filename):
+    """
+    Load FAISS index from backend/indexes
+    """
+    index_path = os.path.join(
+        "indexes",
+        f"{filename}.index"
+    )
+
+    return faiss.read_index(index_path)
+
+
+def save_chunks(chunks, filename):
+    """
+    Save chunk list to backend/metadata
+    """
+    os.makedirs("metadata", exist_ok=True)
+
+    chunk_path = os.path.join(
+        "metadata",
+        f"{filename}.pkl"
+    )
+
+    with open(chunk_path, "wb") as file:
+        pickle.dump(chunks, file)
+
+
+def load_chunks(filename):
+    """
+    Load chunk list from backend/metadata
+    """
+    chunk_path = os.path.join(
+        "metadata",
+        f"{filename}.pkl"
+    )
+
+    with open(chunk_path, "rb") as file:
+        return pickle.load(file)

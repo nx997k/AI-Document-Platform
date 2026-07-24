@@ -8,10 +8,12 @@ function AIChat() {
   const [selectedDocument, setSelectedDocument] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [history, setHistory] = useState([]);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     fetchDocuments();
+    fetchChatHistory();
   }, []);
 
   useEffect(() => {
@@ -38,6 +40,28 @@ function AIChat() {
     }
   };
 
+  const fetchChatHistory = async () => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    if (!user.id) return;
+
+    const response = await fetch(
+      `http://127.0.0.1:5000/chat-history/${user.id}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to load chat history.");
+    }
+
+    const data = await response.json();
+
+    setHistory(data);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
   const askQuestion = async (e) => {
     e.preventDefault();
 
@@ -47,11 +71,13 @@ function AIChat() {
 
     const currentQuestion = question;
 
+    const user = JSON.parse(localStorage.getItem("user"));
+
     try {
       const response = await fetch(
         `http://127.0.0.1:5000/ask/${selectedDocument}?question=${encodeURIComponent(
           currentQuestion
-        )}`
+       )}&user_id=${user.id}`
       );
 
       if (!response.ok) {

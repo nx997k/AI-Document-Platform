@@ -24,9 +24,18 @@ function Login() {
       const data = await response.json();
 
       if (data.message === "Login successful") {
-        navigate("/dashboard");
-      } else {
+
+        localStorage.setItem(
+           "user",
+        JSON.stringify(data.user)
+        );
+
+         navigate("/dashboard");
+
+      }else{
+
         alert(data.message);
+
       }
     } finally {
       setLoading(false);

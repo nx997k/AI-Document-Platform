@@ -1,4 +1,5 @@
 import os
+from rag_service import answer_question
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -10,9 +11,13 @@ from document_processor import (
     create_faiss_index,
     search_chunks,
     retrieve_context,
+    save_faiss_index,
+    load_faiss_index,
+    save_chunks,
+    load_chunks,
 )
 from document_exporter import export_to_pdf, export_to_docx
-from models import db, User
+from models import db, User, ChatHistory
 import bcrypt
 
 app = Flask(__name__)
@@ -68,7 +73,14 @@ def login():
         password.encode("utf-8"),
         user.password.encode("utf-8")
     ):
-        return jsonify({"message": "Login successful"})
+        return jsonify({
+          "message": "Login successful",
+          "user": {
+          "id": user.id,
+          "username": user.username,
+          "email": user.email
+        }
+    })
 
     return jsonify({"message": "Invalid password"}), 401
 
@@ -88,10 +100,27 @@ def upload_file():
 
     file.save(upload_path)
 
+    # Process document immediately
+    text = extract_text(upload_path)
+
+    chunks = chunk_text(text)
+
+    embeddings = create_embeddings(chunks)
+
+    index = create_faiss_index(embeddings)
+
+    # Remove extension from filename
+    document_name = os.path.splitext(filename)[0]
+
+    save_faiss_index(index, document_name)
+
+    save_chunks(chunks, document_name)
+
     return jsonify({
-        "message": "File uploaded successfully",
-        "filename": filename
-    })
+        "message": "File uploaded and indexed successfully",
+        "filename": filename,
+        "chunks": len(chunks)
+   })
 
 @app.route("/documents", methods=["GET"])
 def get_documents():
@@ -194,33 +223,51 @@ def ask_document(filename):
 
     question = request.args.get("question")
 
+    user_id = request.args.get("user_id")
+
     file_path = os.path.join("uploads", filename)
 
-    text = extract_text(file_path)
+    answer = answer_question(file_path, question)
 
-    chunks = chunk_text(text)
+    if user_id:
 
-    embeddings = create_embeddings(chunks)
+        chat = ChatHistory(
+            user_id=int(user_id),
+            document_name=filename,
+            question=question,
+            answer=answer
+        )
 
-    index = create_faiss_index(embeddings)
-
-    results = search_chunks(
-        question,
-        chunks,
-        index
-    )
-
-    context = "\n".join(results)
-
-    answer = ask_gemini(
-        question,
-        context
-    )
+        db.session.add(chat)
+        db.session.commit()
 
     return jsonify({
         "question": question,
         "answer": answer
     })
+
+@app.route("/chat-history/<int:user_id>", methods=["GET"])
+def get_chat_history(user_id):
+
+    chats = (
+        ChatHistory.query
+        .filter_by(user_id=user_id)
+        .order_by(ChatHistory.created_at.desc())
+        .all()
+    )
+
+    history = []
+
+    for chat in chats:
+        history.append({
+            "id": chat.id,
+            "document_name": chat.document_name,
+            "question": chat.question,
+            "answer": chat.answer,
+            "created_at": chat.created_at.strftime("%Y-%m-%d %H:%M")
+        })
+
+    return jsonify(history)
 
 
 @app.route("/generate", methods=["POST"])
@@ -295,3 +342,4 @@ with app.app_context():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
