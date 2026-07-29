@@ -1,0 +1,67 @@
+import ollama
+
+from llm.base import BaseLLMProvider
+
+
+class OllamaProvider(BaseLLMProvider):
+
+    def __init__(self, model="qwen3:8b"):
+        self.model = model
+
+    def chat(self, question: str, context: str = "") -> str:
+
+        prompt = f"""
+You are an AI Document Assistant.
+
+Use ONLY the provided context to answer.
+
+If the answer is unavailable, say:
+
+"I couldn't find that information in the uploaded documents."
+
+Context:
+
+{context}
+
+Question:
+
+{question}
+"""
+
+        response = ollama.chat(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return response["message"]["content"]
+
+    def generate_document(self, prompt: str, context: str = "") -> str:
+
+        final_prompt = f"""
+You are an expert technical writer.
+
+Reference Context:
+
+{context}
+
+User Request:
+
+{prompt}
+"""
+
+        response = ollama.chat(
+            model=self.model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": final_prompt
+                }
+            ]
+        )
+
+        return response["message"]["content"]

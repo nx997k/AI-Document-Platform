@@ -3,7 +3,10 @@ from rag_service import answer_question
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from gemini_service import ask_gemini, generate_document
+from llm.llm_service import LLMService
+from config import LLM_PROVIDER
+
+llm = LLMService(LLM_PROVIDER)
 from document_processor import (
     extract_text,
     chunk_text,
@@ -27,6 +30,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
+llm = LLMService("ollama")
 
 @app.route("/")
 def home():
@@ -291,7 +295,10 @@ def generate_document_route():
 
         context, retrieved_chunks = retrieve_context(file_path, prompt, k=5)
 
-    content = generate_document(prompt, context or None)
+    content = llm.generate_document(
+    prompt,
+    context or ""
+       )
 
     return jsonify({
         "prompt": prompt,

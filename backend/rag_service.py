@@ -6,7 +6,10 @@ from document_processor import (
     search_chunks,
 )
 
-from gemini_service import ask_gemini
+from llm.llm_service import LLMService
+from config import LLM_PROVIDER
+
+llm = LLMService(LLM_PROVIDER)
 
 
 def answer_question(file_path, question):
@@ -27,7 +30,7 @@ def answer_question(file_path, question):
 
     context = "\n".join(results)
 
-    answer = ask_gemini(
+    answer = llm.chat(
         question,
         context
     )
