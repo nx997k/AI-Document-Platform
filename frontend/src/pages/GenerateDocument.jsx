@@ -25,6 +25,7 @@ function GenerateDocument() {
   const [prompt, setPrompt] = useState("");
   const [documents, setDocuments] = useState([]);
   const [sourceDocument, setSourceDocument] = useState("");
+  const [provider, setProvider] = useState("ollama");
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("Generated Document");
   const [retrievedChunks, setRetrievedChunks] = useState([]);
@@ -72,6 +73,7 @@ function GenerateDocument() {
         body: JSON.stringify({
           prompt: prompt.trim(),
           source_document: sourceDocument || null,
+          provider,
         }),
       });
 
@@ -196,6 +198,22 @@ function GenerateDocument() {
             </div>
 
             <div className="form-group">
+             <label className="form-label" htmlFor="provider">
+                  AI Model
+               </label>
+
+              <select
+                id="provider"
+                className="form-select"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+               >
+                <option value="ollama">🟢 Qwen3 (Local)</option>
+                <option value="gemini">🔵 Gemini</option>
+              </select>
+             </div>
+
+           <div className="form-group">
               <label className="form-label" htmlFor="source-doc">
                 Reference Document (optional — enables RAG retrieval)
               </label>

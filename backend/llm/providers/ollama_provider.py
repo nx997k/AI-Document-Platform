@@ -28,6 +28,8 @@ Question:
 {question}
 """
 
+        print("Calling Ollama Chat...")
+
         response = ollama.chat(
             model=self.model,
             messages=[
@@ -38,9 +40,13 @@ Question:
             ]
         )
 
+        print("Ollama Chat Finished")
+
         return response["message"]["content"]
 
     def generate_document(self, prompt: str, context: str = "") -> str:
+
+        print("Entered generate_document()")
 
         final_prompt = f"""
 You are an expert technical writer.
@@ -54,6 +60,8 @@ User Request:
 {prompt}
 """
 
+        print("Calling Ollama Generate...")
+
         response = ollama.chat(
             model=self.model,
             messages=[
@@ -63,5 +71,7 @@ User Request:
                 }
             ]
         )
+
+        print("Ollama Generate Finished")
 
         return response["message"]["content"]

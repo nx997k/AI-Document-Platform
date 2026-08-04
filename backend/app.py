@@ -277,9 +277,12 @@ def get_chat_history(user_id):
 @app.route("/generate", methods=["POST"])
 def generate_document_route():
     data = request.get_json() or {}
+    print("Received request")
 
     prompt = data.get("prompt", "").strip()
     source_document = data.get("source_document")
+    provider = data.get("provider", LLM_PROVIDER)
+    print("Provider:", provider)
 
     if not prompt:
         return jsonify({"message": "Prompt is required"}), 400
@@ -295,10 +298,17 @@ def generate_document_route():
 
         context, retrieved_chunks = retrieve_context(file_path, prompt, k=5)
 
+    llm = LLMService(provider)
+    print("LLMService created")
+
+    print("Calling generate_document...")
+
     content = llm.generate_document(
-    prompt,
-    context or ""
-       )
+      prompt,
+      context or ""
+    )
+
+    print("generate_document finished")
 
     return jsonify({
         "prompt": prompt,
