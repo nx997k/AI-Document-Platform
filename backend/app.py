@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 from rag_service import answer_question
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_file
@@ -29,8 +32,6 @@ CORS(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-db.init_app(app)
-llm = LLMService("ollama")
 
 @app.route("/")
 def home():

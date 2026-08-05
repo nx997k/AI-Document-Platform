@@ -1,5 +1,5 @@
 import os
 
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

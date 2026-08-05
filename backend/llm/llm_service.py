@@ -3,7 +3,7 @@ from llm.provider_factory import ProviderFactory
 
 class LLMService:
 
-    def __init__(self, provider="ollama"):
+    def __init__(self, provider="gemini"):
         self.provider = ProviderFactory.get_provider(provider)
 
     def chat(self, question, context=""):
