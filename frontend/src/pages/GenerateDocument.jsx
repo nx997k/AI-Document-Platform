@@ -38,14 +38,26 @@ function GenerateDocument() {
   }, []);
 
   const fetchDocuments = async () => {
-   try {
-     const response = await fetch(`${API}/documents`);
+  try {
+    const token = localStorage.getItem("token");
 
-     if (!response.ok) {
-      throw new Error("Unable to load documents.");
+    if (!token) {
+      throw new Error("Please login again.");
     }
 
+    const response = await fetch(`${API}/documents`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.msg || data.message || "Unable to load documents."
+      );
+    }
 
     setDocuments(data);
 
@@ -53,52 +65,65 @@ function GenerateDocument() {
       setSourceDocument(data[0]);
     }
 
-  }catch (error) {
+  } catch (error) {
     console.error(error);
     alert(error.message);
-   }
-  };
+  }
+}; 
 
   const handleGenerate = async (e) => {
-    e?.preventDefault();
-    if (!prompt.trim()) return;
+  e?.preventDefault();
 
-    setGenerating(true);
-    setActiveStep(2);
+  if (!prompt.trim()) return;
 
-    try {
-      const response = await fetch(`${API}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: prompt.trim(),
-          source_document: sourceDocument || null,
-          provider,
-        }),
-      });
+  setGenerating(true);
+  setActiveStep(2);
 
-      const data = await response.json();
+  try {
+    const token = localStorage.getItem("token");
 
-      if (!response.ok) {
-        throw new Error(data.message || "Generation failed");
-      }
-
-      setRetrievedChunks(data.retrieved_chunks || []);
-      setActiveStep(3);
-
-      setTimeout(() => {
-        setContent(data.content || "");
-        setActiveStep(4);
-      }, 400);
-    } catch (error) {
-      console.error(error);
-      alert(error.message || "Failed to connect to the server");
-      setActiveStep(1);
-
-    } finally {
-      setGenerating(false);
+    if (!token) {
+      throw new Error("Please login again.");
     }
-  };
+
+    const response = await fetch(`${API}/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        prompt: prompt.trim(),
+        source_document: sourceDocument || null,
+        provider,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.msg || data.message || "Generation failed"
+      );
+    }
+
+    setRetrievedChunks(data.retrieved_chunks || []);
+    setActiveStep(3);
+
+    setTimeout(() => {
+      setContent(data.content || "");
+      setActiveStep(4);
+    }, 400);
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Failed to connect to the server");
+    setActiveStep(1);
+
+  } finally {
+    setGenerating(false);
+  }
+};
 
   const handleExport = async (format) => {
     if (!content.trim()) {

@@ -12,15 +12,49 @@ function MyDocuments() {
   }, []);
 
   const fetchDocuments = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("http://127.0.0.1:5000/documents");
-      const data = await response.json();
-      setDocuments(data);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Please login again.");
     }
-  };
+
+    const response = await fetch(
+      "http://127.0.0.1:5000/documents",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.msg ||
+        data.message ||
+        "Unable to load documents."
+      );
+    }
+
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid documents response.");
+    }
+
+    setDocuments(data);
+
+  } catch (error) {
+    console.error(error);
+    setDocuments([]);
+    alert(error.message);
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AppLayout

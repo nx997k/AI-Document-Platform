@@ -8,9 +8,25 @@ function Dashboard() {
   const [uploading, setUploading] = useState(false);
 
   const fetchDocuments = async () => {
-    const response = await fetch("http://127.0.0.1:5000/documents");
+
+    const token = localStorage.getItem("token");
+
+    const response = await fetch("http://127.0.0.1:5000/documents", {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
     const data = await response.json();
-    setDocuments(data);
+
+    console.log(data);
+
+    if (response.ok) {
+        setDocuments(data);
+    } else {
+        alert(data.msg || data.message);
+        setDocuments([]);
+    }
   };
 
   useEffect(() => {
@@ -29,10 +45,15 @@ function Dashboard() {
       const formData = new FormData();
       formData.append("file", file);
 
+      const token = localStorage.getItem("token");
+
       const response = await fetch("http://127.0.0.1:5000/upload", {
-        method: "POST",
-        body: formData,
-      });
+         method: "POST",
+         headers: {
+         Authorization: `Bearer ${token}`,
+        },
+       body: formData,
+    });
 
       const data = await response.json();
       alert(data.message);

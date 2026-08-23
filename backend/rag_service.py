@@ -12,11 +12,13 @@ from config import LLM_PROVIDER
 llm = LLMService(LLM_PROVIDER)
 
 
-def answer_question(file_path, question):
+def answer_question(file_path, question, user_id):
 
-    document_name = os.path.splitext(
-        os.path.basename(file_path)
-    )[0]
+    filename = os.path.basename(file_path)
+
+    base_document_name = os.path.splitext(filename)[0]
+
+    document_name = f"user_{user_id}_{base_document_name}"
 
     index = load_faiss_index(document_name)
 

@@ -22,6 +22,8 @@ function Login() {
       });
 
       const data = await response.json();
+      
+      console.log(data);
 
       if (data.message === "Login successful") {
 
@@ -30,7 +32,12 @@ function Login() {
         JSON.stringify(data.user)
         );
 
-         navigate("/dashboard");
+        localStorage.setItem(
+        "token",
+        data.access_token
+        );
+
+        navigate("/dashboard");
 
       }else{
 
