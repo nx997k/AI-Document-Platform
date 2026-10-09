@@ -1,3 +1,5 @@
+import os
+
 import ollama
 
 from llm.base import BaseLLMProvider
@@ -5,8 +7,8 @@ from llm.base import BaseLLMProvider
 
 class OllamaProvider(BaseLLMProvider):
 
-    def __init__(self, model="qwen3:8b"):
-        self.model = model
+    def __init__(self, model=None):
+        self.model = model or os.getenv("OLLAMA_MODEL", "qwen3:8b")
 
     def chat(self, question: str, context: str = "") -> str:
 

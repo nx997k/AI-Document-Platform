@@ -6,14 +6,14 @@ from llm.base import BaseLLMProvider
 
 class GeminiProvider(BaseLLMProvider):
 
-    def __init__(self, model="gemini-2.5-flash"):
+    def __init__(self, model=None):
         api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables.")
 
         self.client = genai.Client(api_key=api_key)
-        self.model = model
+        self.model = model or GEMINI_MODEL
 
     def chat(self, question, context=""):
 

@@ -1,173 +1,103 @@
-import pickle
 import os
-import pdfplumber
-from docx import Document
-from sentence_transformers import SentenceTransformer
+import pickle
+
 import faiss
 import numpy as np
+import pdfplumber
+from docx import Document
 
-model = SentenceTransformer(
-    "all-MiniLM-L6-v2"
-)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_model = None
+
+
+def _get_model():
+    global _model
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+
+        _model = SentenceTransformer(os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2"))
+    return _model
 
 
 def extract_text(file_path):
-
-    if file_path.endswith(".pdf"):
-
-        text = ""
-
+    extension = os.path.splitext(file_path)[1].lower()
+    if extension == ".pdf":
         with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
-
-        return text
-
-    elif file_path.endswith(".docx"):
-
+            return "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+    if extension == ".docx":
         doc = Document(file_path)
-
-        text = ""
-
-        for para in doc.paragraphs:
-            text += para.text + "\n"
-
-        return text
-
-    elif file_path.endswith(".txt"):
-
-        with open(file_path, "r", encoding="utf-8") as file:
-            text = file.read()
-
-        return text
-
-    return "Unsupported file format"
+        return "\n".join(p.text for p in doc.paragraphs).strip()
+    if extension == ".txt":
+        with open(file_path, "r", encoding="utf-8-sig") as file:
+            return file.read().strip()
+    raise ValueError("Unsupported file format")
 
 
-def chunk_text(text, chunk_size=500):
-
-    chunks = []
-
-    for i in range(0, len(text), chunk_size):
-        chunks.append(text[i:i + chunk_size])
-
-    return chunks
+def chunk_text(text, chunk_size=900, overlap=120):
+    text = (text or "").strip()
+    if not text:
+        return []
+    step = max(1, chunk_size - overlap)
+    return [text[i:i + chunk_size] for i in range(0, len(text), step)]
 
 
 def create_embeddings(chunks):
-
-    embeddings = model.encode(chunks)
-
-    return embeddings.tolist()
+    if not chunks:
+        return []
+    return _get_model().encode(chunks, convert_to_numpy=True, normalize_embeddings=True).astype("float32")
 
 
 def create_faiss_index(embeddings):
-
-    vectors = np.array(
-        embeddings,
-        dtype="float32"
-    )
-
-    dimension = vectors.shape[1]
-
-    index = faiss.IndexFlatL2(dimension)
-
+    vectors = np.asarray(embeddings, dtype="float32")
+    if vectors.ndim != 2 or vectors.shape[0] == 0:
+        raise ValueError("At least one text embedding is required")
+    index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors)
-
     return index
 
 
 def search_chunks(question, chunks, index, k=2):
-
-    question_embedding = model.encode(
-        [question]
-    )
-
-    question_embedding = np.array(
-        question_embedding,
-        dtype="float32"
-    )
-
-    k = min(k, len(chunks))
-    if k == 0:
+    if not chunks:
         return []
-
-    distances, indices = index.search(
-        question_embedding,
-        k=k
-    )
-
-    results = []
-
-    for idx in indices[0]:
-        results.append(chunks[idx])
-
-    return results
+    vector = _get_model().encode([question], convert_to_numpy=True, normalize_embeddings=True).astype("float32")
+    _scores, indices = index.search(vector, min(k, len(chunks)))
+    return [chunks[i] for i in indices[0] if 0 <= i < len(chunks)]
 
 
 def retrieve_context(file_path, query, k=5):
-    text = extract_text(file_path)
-    chunks = chunk_text(text)
-
+    chunks = chunk_text(extract_text(file_path))
     if not chunks:
         return "", []
-
-    embeddings = create_embeddings(chunks)
-    index = create_faiss_index(embeddings)
-    results = search_chunks(query, chunks, index, k=k)
-    context = "\n\n".join(results)
-
-    return context, results
-
-def save_faiss_index(index, filename):
-    """
-    Save FAISS index to backend/indexes
-    """
-    os.makedirs("indexes", exist_ok=True)
-
-    index_path = os.path.join(
-        "indexes",
-        f"{filename}.index"
-    )
-
-    faiss.write_index(index, index_path)
+    results = search_chunks(query, chunks, create_faiss_index(create_embeddings(chunks)), k)
+    return "\n\n".join(results), results
 
 
-def load_faiss_index(filename):
-    """
-    Load FAISS index from backend/indexes
-    """
-    index_path = os.path.join(
-        "indexes",
-        f"{filename}.index"
-    )
-
-    return faiss.read_index(index_path)
+def _artifact_path(folder, filename, suffix):
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or not safe_name:
+        raise ValueError("Invalid artifact identifier")
+    return os.path.join(folder or os.path.join(_BASE_DIR, "indexes"), safe_name + suffix)
 
 
-def save_chunks(chunks, filename):
-    """
-    Save chunk list to backend/metadata
-    """
-    os.makedirs("metadata", exist_ok=True)
+def save_faiss_index(index, filename, folder=None):
+    folder = folder or os.path.join(_BASE_DIR, "indexes")
+    os.makedirs(folder, exist_ok=True)
+    faiss.write_index(index, _artifact_path(folder, filename, ".index"))
 
-    chunk_path = os.path.join(
-        "metadata",
-        f"{filename}.pkl"
-    )
 
-    with open(chunk_path, "wb") as file:
+def load_faiss_index(filename, folder=None):
+    folder = folder or os.path.join(_BASE_DIR, "indexes")
+    return faiss.read_index(_artifact_path(folder, filename, ".index"))
+
+
+def save_chunks(chunks, filename, folder=None):
+    folder = folder or os.path.join(_BASE_DIR, "metadata")
+    os.makedirs(folder, exist_ok=True)
+    with open(_artifact_path(folder, filename, ".pkl"), "wb") as file:
         pickle.dump(chunks, file)
 
 
-def load_chunks(filename):
-    """
-    Load chunk list from backend/metadata
-    """
-    chunk_path = os.path.join(
-        "metadata",
-        f"{filename}.pkl"
-    )
-
-    with open(chunk_path, "rb") as file:
+def load_chunks(filename, folder=None):
+    folder = folder or os.path.join(_BASE_DIR, "metadata")
+    with open(_artifact_path(folder, filename, ".pkl"), "rb") as file:
         return pickle.load(file)

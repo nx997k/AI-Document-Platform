@@ -1,361 +1,115 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
+import Icon from "../components/Icon";
+import { api } from "../lib/api";
 
-const API =
-  import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
-
-const PROMPT_SUGGESTIONS = [
-  "Create a project report based on the uploaded document.",
-  "Generate meeting minutes from the source material.",
-  "Write a business proposal using the reference context.",
-  "Draft an executive summary of the document.",
-  "Create a technical documentation summary.",
-];
-
-const FLOW_STEPS = [
-  { id: 1, label: "Prompt", icon: "✎" },
-  { id: 2, label: "Retrieve", icon: "🔍" },
-  { id: 3, label: "Generate", icon: "🤖" },
-  { id: 4, label: "Edit", icon: "✏" },
-  { id: 5, label: "Export", icon: "⬇" },
-];
+const suggestions = ["Write a concise executive summary", "Draft a project status report", "Turn these notes into meeting minutes"];
 
 function GenerateDocument() {
   const [prompt, setPrompt] = useState("");
   const [documents, setDocuments] = useState([]);
+  const [documentsError, setDocumentsError] = useState("");
   const [sourceDocument, setSourceDocument] = useState("");
-  const [provider, setProvider] = useState("ollama");
+  const [provider, setProvider] = useState("gemini");
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("Generated Document");
   const [retrievedChunks, setRetrievedChunks] = useState([]);
-  const [generating, setGenerating] = useState(false);
-  const [exporting, setExporting] = useState(null);
-  const [activeStep, setActiveStep] = useState(1);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const selectedSource = documents.find((document) => document.name === sourceDocument);
 
   useEffect(() => {
-    fetchDocuments();
+    let active = true;
+    api.documents().then((items) => { if (active) setDocuments(items); })
+      .catch((err) => { if (active) setDocumentsError(err.message); });
+    return () => { active = false; };
   }, []);
 
-  const fetchDocuments = async () => {
-  try {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("Please login again.");
-    }
-
-    const response = await fetch(`${API}/documents`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.msg || data.message || "Unable to load documents."
-      );
-    }
-
-    setDocuments(data);
-
-    if (data.length > 0) {
-      setSourceDocument(data[0]);
-    }
-
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-}; 
-
-  const handleGenerate = async (e) => {
-  e?.preventDefault();
-
-  if (!prompt.trim()) return;
-
-  setGenerating(true);
-  setActiveStep(2);
-
-  try {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("Please login again.");
-    }
-
-    const response = await fetch(`${API}/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        prompt: prompt.trim(),
-        source_document: sourceDocument || null,
-        provider,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.msg || data.message || "Generation failed"
-      );
-    }
-
-    setRetrievedChunks(data.retrieved_chunks || []);
-    setActiveStep(3);
-
-    setTimeout(() => {
-      setContent(data.content || "");
-      setActiveStep(4);
-    }, 400);
-
-  } catch (error) {
-    console.error(error);
-    alert(error.message || "Failed to connect to the server");
-    setActiveStep(1);
-
-  } finally {
-    setGenerating(false);
-  }
-};
-
-  const handleExport = async (format) => {
-    if (!content.trim()) {
-      alert("Nothing to export. Generate a document first.");
-      return;
-    }
-
-    setExporting(format);
-
+  const generate = async (event) => {
+    event.preventDefault();
+    if (!prompt.trim() || busy) return;
+    setError("");
+    setNotice("");
+    setBusy("generate");
     try {
-      const response = await fetch(`${API}/export`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          format,
-          title,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        alert(data.message || "Export failed");
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${title.replace(/\s+/g, "_")}.${format}`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setActiveStep(5);
-    } catch {
-      alert("Export failed. Please try again.");
+      const data = await api.generate({ prompt: prompt.trim(), source_document: sourceDocument || null, provider });
+      if (!data.content?.trim()) throw new Error("The provider returned an empty draft. Please try again.");
+      setContent(data.content);
+      setRetrievedChunks(Array.isArray(data.retrieved_chunks) ? data.retrieved_chunks : []);
+      setNotice(data.chunks_used > 0 ? `Draft generated with ${data.chunks_used} retrieved source passage${data.chunks_used === 1 ? "" : "s"}.` : "Draft generated without document context.");
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setExporting(null);
+      setBusy("");
     }
   };
 
-  const wordCount = content.trim()
-    ? content.trim().split(/\s+/).length
-    : 0;
+  const exportFile = async (format) => {
+    if (!content.trim() || busy) return;
+    setError("");
+    setNotice("");
+    setBusy(format);
+    try {
+      const blob = await api.exportDocument({ content, format, title });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const safeTitle = title.trim().replace(/[^\w-]+/g, "_") || "Generated_Document";
+      anchor.href = url;
+      anchor.download = `${safeTitle}.${format}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(`${format.toUpperCase()} export started.`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const copyContent = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setNotice("Draft copied to clipboard.");
+      setError("");
+    } catch {
+      setError("Clipboard access is unavailable in this browser. Select and copy the draft manually.");
+    }
+  };
+
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
   return (
-    <AppLayout
-      title="AI Document Generator"
-      subtitle="Generate complete documents from prompts with RAG-powered context retrieval"
-    >
-      <div className="flow-steps">
-        {FLOW_STEPS.map((step) => (
-          <div
-            key={step.id}
-            className={`flow-step${activeStep >= step.id ? " flow-step--active" : ""}${activeStep === step.id ? " flow-step--current" : ""}`}
-          >
-            <span className="flow-step-icon">{step.icon}</span>
-            <span className="flow-step-label">{step.label}</span>
-            {step.id < FLOW_STEPS.length && (
-              <span className="flow-step-arrow">→</span>
-            )}
-          </div>
-        ))}
-      </div>
+    <AppLayout title="Document studio" subtitle="Turn a clear brief into a polished first draft.">
+      {error && <div className="alert alert--error" role="alert"><Icon name="warning" /><span>{error}</span></div>}
+      {documentsError && <div className="alert alert--warning" role="status"><Icon name="warning" /><span>Your document list could not be loaded: {documentsError}. You can still generate without a source.</span></div>}
+      {notice && <div className="alert alert--success" role="status"><Icon name="check" /><span>{notice}</span></div>}
 
-      <div className="generator-grid">
-        <div className="glass-card generator-panel">
-          <h2 className="section-title">1. Document Request</h2>
-
-          <form onSubmit={handleGenerate}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="prompt">
-                What document do you want to create?
-              </label>
-              <textarea
-                id="prompt"
-                className="form-input form-textarea"
-                rows={4}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder='e.g. "Create a project report." or "Generate meeting minutes."'
-                required
-              />
+      <div className="generator-layout">
+        <section className="generator-brief-card">
+          <div className="generator-card-heading"><span className="section-kicker">START WITH A BRIEF</span><h2>What are we writing?</h2><p>Be specific about the audience, purpose, and details to include.</p></div>
+          <form onSubmit={generate}>
+            <div className="form-group"><label className="form-label" htmlFor="generation-prompt">Your instructions</label><textarea id="generation-prompt" className="form-input prompt-input" rows={7} value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="For example: Create a one-page project update for leadership covering progress, risks, and next steps…" required /></div>
+            <div className="prompt-suggestions" aria-label="Prompt suggestions">{suggestions.map((item) => <button key={item} className="prompt-chip" type="button" onClick={() => setPrompt(item)}>{item}</button>)}</div>
+            <div className="form-group"><label className="form-label" htmlFor="provider">AI provider</label><select id="provider" className="form-select" value={provider} onChange={(event) => setProvider(event.target.value)}><option value="gemini">Google Gemini</option><option value="ollama">Ollama (local service)</option></select><span className="field-hint">Gemini requires a valid API key. Ollama requires its server and selected model to be running.</span></div>
+            <div className="form-group"><label className="form-label" htmlFor="source-doc">Use a reference document <span className="optional-label">Optional</span></label><select id="source-doc" className="form-select" value={sourceDocument} onChange={(event) => setSourceDocument(event.target.value)}><option value="">Generate without a source</option>{documents.map((document) => <option key={document.name} value={document.name} disabled={document.indexed === false}>{document.name}{document.indexed === false ? " — not indexed" : ""}</option>)}</select>
+              {selectedSource?.indexed === false && <span className="field-hint field-hint--error">This document has no index and cannot be used as a source right now.</span>}
             </div>
-
-            <div className="prompt-suggestions">
-              {PROMPT_SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  className="prompt-chip"
-                  onClick={() => setPrompt(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-
-            <div className="form-group">
-             <label className="form-label" htmlFor="provider">
-                  AI Model
-               </label>
-
-              <select
-                id="provider"
-                className="form-select"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-               >
-                <option value="ollama">🟢 Qwen3 (Local)</option>
-                <option value="gemini">🔵 Gemini</option>
-              </select>
-             </div>
-
-           <div className="form-group">
-              <label className="form-label" htmlFor="source-doc">
-                Reference Document (optional — enables RAG retrieval)
-              </label>
-              <select
-                id="source-doc"
-                className="form-select"
-                value={sourceDocument}
-                onChange={(e) => setSourceDocument(e.target.value)}
-              >
-                <option value="">No reference — generate from prompt only</option>
-                {documents.map((doc) => (
-                  <option key={doc} value={doc}>
-                    {doc}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="btn--full"
-              loading={generating}
-              disabled={!prompt.trim()}
-              icon="✦"
-            >
-              Generate Document
-            </Button>
+            <Button type="submit" variant="primary" size="md" className="btn--full" icon={<Icon name="sparkles" size={17} />} loading={busy === "generate"} disabled={!prompt.trim() || !!busy || selectedSource?.indexed === false}>Generate draft</Button>
           </form>
+          {retrievedChunks.length > 0 && <details className="retrieved-context"><summary>Retrieved source passages <span>{retrievedChunks.length}</span></summary>{retrievedChunks.map((chunk, index) => <blockquote className="context-chunk" key={`source-${index}`}>{chunk}</blockquote>)}</details>}
+        </section>
 
-          {retrievedChunks.length > 0 && (
-            <div className="retrieved-context mt-4">
-              <h3 className="section-title">
-                Retrieved Context ({retrievedChunks.length} chunks)
-              </h3>
-              {retrievedChunks.map((chunk, i) => (
-                <div key={i} className="context-chunk">
-                  {chunk.slice(0, 200)}
-                  {chunk.length > 200 ? "…" : ""}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="glass-card generator-panel">
-          <div className="editor-header">
-            <h2 className="section-title">2. Edit & Export</h2>
-            {content && (
-              <span className="word-count">{wordCount} words</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="doc-title">
-              Document Title
-            </label>
-            <input
-              id="doc-title"
-              type="text"
-              className="form-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Generated Document"
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="doc-content">
-              Document Content
-            </label>
-            <textarea
-              id="doc-content"
-              className="form-input form-textarea form-textarea--editor"
-              rows={18}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Your generated document will appear here. You can edit it before exporting."
-            />
-          </div>
-
-          <div className="action-row" style={{ justifyContent: "flex-start" }}>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => handleExport("pdf")}
-              loading={exporting === "pdf"}
-              disabled={!content.trim() || !!exporting}
-              icon="📄"
-            >
-              Export PDF
-            </Button>
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => handleExport("docx")}
-              loading={exporting === "docx"}
-              disabled={!content.trim() || !!exporting}
-              icon="📝"
-            >
-              Export DOCX
-            </Button>
-            <Button
-              variant="ghost"
-              size="md"
-              onClick={() => {
-                setContent("");
-                setRetrievedChunks([]);
-                setActiveStep(1);
-              }}
-              disabled={!content && retrievedChunks.length === 0}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
+        <section className="document-editor-card" aria-label="Generated document editor">
+          <header className="editor-toolbar"><div><span className="section-kicker">YOUR DRAFT</span><h2>Review and export</h2></div><span className="word-count">{wordCount} words</span></header>
+          <div className="editor-title-row"><label htmlFor="doc-title">Document title</label><input id="doc-title" className="form-input" value={title} onChange={(event) => setTitle(event.target.value)} /></div>
+          <label className="sr-only" htmlFor="doc-content">Generated document content</label>
+          <textarea id="doc-content" className="document-editor" value={content} onChange={(event) => setContent(event.target.value)} placeholder="Your generated draft will appear here. You can make edits before exporting." />
+          <footer className="editor-footer"><span className="editor-disclaimer">AI drafts can contain errors. Review before sharing.</span><div className="editor-actions"><Button variant="secondary" size="sm" icon={<Icon name="copy" size={16} />} onClick={copyContent} disabled={!content.trim() || !!busy}>Copy</Button><Button variant="secondary" size="sm" icon={<Icon name="download" size={16} />} onClick={() => exportFile("docx")} loading={busy === "docx"} disabled={!content.trim() || !!busy}>DOCX</Button><Button variant="primary" size="sm" icon={<Icon name="download" size={16} />} onClick={() => exportFile("pdf")} loading={busy === "pdf"} disabled={!content.trim() || !!busy}>PDF</Button></div></footer>
+        </section>
       </div>
     </AppLayout>
   );

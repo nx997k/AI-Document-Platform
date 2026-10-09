@@ -22,3 +22,4 @@ pdfplumber
 python-docx
 reportlab
 numpy
+ollama

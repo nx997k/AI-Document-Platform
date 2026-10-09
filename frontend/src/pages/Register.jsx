@@ -1,111 +1,55 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import BackgroundEffects from "../components/BackgroundEffects";
+import { Link, useNavigate } from "react-router-dom";
+import AuthLayout from "../components/AuthLayout";
 import Button from "../components/Button";
+import Icon from "../components/Icon";
+import { api } from "../lib/api";
 
 function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const navigate = useNavigate();
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async (event) => {
+    event.preventDefault();
+    if (loading) return;
     setLoading(true);
-
+    setError("");
+    setSuccess("");
     try {
-      const response = await fetch("http://127.0.0.1:5000/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await response.json();
-      alert(data.message);
+      await api.register(username.trim(), email.trim(), password);
+      setSuccess("Your account is ready. Taking you to sign in…");
+      window.setTimeout(() => navigate("/", { replace: true }), 900);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <BackgroundEffects />
-
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-logo">✦</div>
-          <h1 className="auth-title">Create account</h1>
-          <p className="auth-subtitle">
-            Join the intelligent document generation platform
-          </p>
-
-          <form onSubmit={handleRegister}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="username">
-                Username
-              </label>
-              <input
-                id="username"
-                type="text"
-                className="form-input"
-                placeholder="Choose a username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="form-input"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="form-input"
-                placeholder="Create a strong password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="btn--full"
-              loading={loading}
-              icon="✓"
-            >
-              Create Account
-            </Button>
-          </form>
-
-          <p className="auth-footer">
-            Already have an account?{" "}
-            <Link to="/" className="auth-link">
-              Sign in
-            </Link>
-          </p>
-        </div>
+    <AuthLayout>
+      <div className="auth-card">
+        <span className="auth-mobile-mark"><Icon name="documents" size={20} /></span>
+        <span className="section-kicker">YOUR WORKSPACE STARTS HERE</span>
+        <h2>Create your account</h2>
+        <p className="auth-card-subtitle">Set up your personal DocuMind workspace.</p>
+        {error && <div className="alert alert--error" role="alert"><Icon name="warning" /><span>{error}</span></div>}
+        {success && <div className="alert alert--success" role="status"><Icon name="check" /><span>{success}</span></div>}
+        <form onSubmit={handleRegister}>
+          <div className="form-group"><label className="form-label" htmlFor="username">Name</label><input id="username" type="text" className="form-input" placeholder="Your name" autoComplete="name" maxLength={100} value={username} onChange={(event) => setUsername(event.target.value)} required /></div>
+          <div className="form-group"><label className="form-label" htmlFor="email">Email address</label><input id="email" type="email" className="form-input" placeholder="you@company.com" autoComplete="email" maxLength={120} value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
+          <div className="form-group"><label className="form-label" htmlFor="password">Password</label><input id="password" type="password" className="form-input" placeholder="At least 8 characters" autoComplete="new-password" minLength={8} maxLength={72} value={password} onChange={(event) => setPassword(event.target.value)} required /><span className="field-hint">Use 8–72 characters.</span></div>
+          <Button type="submit" variant="primary" size="md" className="btn--full auth-submit" loading={loading} icon={<Icon name="arrow" size={16} />}>Create account</Button>
+        </form>
+        <p className="auth-switch">Already have an account? <Link to="/">Sign in</Link></p>
       </div>
-    </div>
+      <p className="auth-legal">Your account is protected with password-based authentication.</p>
+    </AuthLayout>
   );
 }
 
